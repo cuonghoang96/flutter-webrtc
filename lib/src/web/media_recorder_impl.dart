@@ -10,7 +10,7 @@ import 'media_stream_impl.dart';
 
 class MediaRecorderWeb extends MediaRecorder {
   late html.MediaRecorder _recorder;
-  late Completer<String> _completer;
+  late Completer<html.Blob> _completer;
 
   @override
   Future<void> start(
@@ -33,7 +33,7 @@ class MediaRecorderWeb extends MediaRecorder {
     _recorder = html.MediaRecorder(_native.jsStream, {'mimeType': mimeType});
     if (onDataChunk == null) {
       var _chunks = <html.Blob>[];
-      _completer = Completer<String>();
+      _completer = Completer<html.Blob>();
       _recorder.addEventListener('dataavailable', (html.Event event) {
         final html.Blob blob = js.JsObject.fromBrowserObject(event)['data'];
         if (blob.size > 0) {
@@ -41,7 +41,7 @@ class MediaRecorderWeb extends MediaRecorder {
         }
         if (_recorder.state == 'inactive') {
           final blob = html.Blob(_chunks, mimeType);
-          _completer.complete(html.Url.createObjectUrlFromBlob(blob));
+          _completer.complete(blob);
         }
       });
       _recorder.onError.listen((error) {
