@@ -15,16 +15,3 @@ dev_dependencies:
     sdk: flutter
   pedantic: ^1.11.0
   test:
-    
-flutter:
-  plugin:
-    platforms:
-      android:
-        package: com.cloudwebrtc.webrtc
-        pluginClass: FlutterWebRTCPlugin
-      ios:
-        pluginClass: FlutterWebRTCPlugin
-      macos:
-        pluginClass: FlutterWebRTCPlugin
-      windows:
-        pluginClass: FlutterWebRTCPlugin
