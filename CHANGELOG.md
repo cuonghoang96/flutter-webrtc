@@ -1,6 +1,67 @@
 # Changelog
 
 --------------------------------------------
+[0.6.10+hotfix.1] - 2021-01-02
+
+* [Web] Fix compiler errors for web.
+
+[0.6.10] - 2021-10-01
+
+* [iOS] Fix bug for RtpTransceiver.getCurrentDirection.
+* [Dart] Improve MethodChannel calling.
+
+[0.6.9] - 2021-10-01
+
+* [iOS] Update WebRTC build (#707).
+* [Windows] Add Unified-Plan support for windows. (#688)
+* [iOS] Improve audio handling on iOS (#705)
+
+[0.6.8] - 2021-09-27
+
+* [Android] Use ApplicationContext to verify permissions when activity is null.
+* [iOS] Add support for lightning microphone. (#693)
+* [Windows] Fix FlutterMediaStream::GetSources.
+* [Web] Fix Flutter 2.5.0 RTCVideoRendererWeb bug (#681)
+* [Web] Bug fix (#679)
+
+[0.6.7] - 2021-09-08
+
+* [Android] upgrade webrtc sdk to m92.92.4515.
+* [Web] `addTransceiver` bug fix (#675)
+* [Web] Use low-level jsutil to call createOffer/createrAnswer to solve the issue on safari/firefox.
+* [Dart] Fix currentDirection/direction implementation confusion.
+
+[0.6.6] - 2021.09.01
+
+* [Sponsorship] Thanks for LiveKit sponsorship.
+* [Web] Avoid removing all audio elements when stopping a single video renderer (#667)
+* [Web] Properly cleanup srcObject to avoid accidental dispose
+* [Dart] Removed warnings (#647)
+* [Web] Switch transferFromImageBitmap to be invoked using js.callMethod (#631)
+* [Web] Fix sending binary data over DataChannel in web implementation. (#634)
+* [Darwin] Nullable return for GetLocalDescription/GetRemoteDiscription
+* [Darwin] Fix incorrect argument name at RTCRtpSender (#600)
+
+[0.6.5] - 2021.06.18
+
+* [Android] Falling back to the first available camera fix #580
+* [Android] Fix application exit null-pointer exception (#582)
+* [Dart] Add label getter to DataChannel Interface (#585)
+* [Dart] Fix exception raised at RTCPeerConnection.removeTrack and RTCRtpSender.setParameters (#588)
+* [Dart] Fix: null check (#595)
+* [Dart] Fix: null check for RTCRtpTransceiverNative.fromMap
+
+[0.6.4] - 2021.05.02
+
+* [Android] Fix getting screen capture on Huawei only successful in the first time. (#523)
+* [Android] Add configuration "cryptoOptions" in parseRTCConfiguration().
+* [Dart] Change getLocalDescription,getRemoteDescription,RTCRtpSenderWeb.track returns to nullable.
+* [Dart] Fixed bug in RTCPeerConnectionWeb.removeTrack.
+* [Dart] Change MediaStreamTrack.captureFrame returns to ByteBuffer to compatible with web API.
+* [Dart]  Do null safety check in onRemoveStream,onRemoveTrack and MediaStream.getTrackById.
+* [Android] Add reStartCamera method when the camera is preempted by other apps.
+* [Web] Refactored RTCVideoRendererWeb and RTCVideoViewWeb, using video and audio HTML tags to render audio and video streams separately.
+
 [0.6.3] - 2021.04.03
 
 * [Dart] Change RTCRtpSender.track to nullable.

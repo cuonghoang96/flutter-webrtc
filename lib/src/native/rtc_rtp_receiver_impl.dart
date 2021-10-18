@@ -4,7 +4,6 @@ import '../interface/media_stream_track.dart';
 import '../interface/rtc_rtp_parameters.dart';
 import '../interface/rtc_rtp_receiver.dart';
 import '../interface/rtc_stats_report.dart';
-
 import 'media_stream_track_impl.dart';
 import 'utils.dart';
 
@@ -31,8 +30,7 @@ class RTCRtpReceiverNative extends RTCRtpReceiver {
   @override
   Future<List<StatsReport>> getStats() async {
     try {
-      final response = await _channel.invokeMethod<Map<dynamic, dynamic>>(
-          'getStats', <String, dynamic>{
+      final response = await WebRTC.invokeMethod('getStats', <String, dynamic>{
         'peerConnectionId': _peerConnectionId,
         'track': track.id
       });
@@ -51,7 +49,6 @@ class RTCRtpReceiverNative extends RTCRtpReceiver {
   }
 
   /// private:
-  final _channel = WebRTC.methodChannel();
   String _id;
   String _peerConnectionId;
   MediaStreamTrack _track;

@@ -60,7 +60,6 @@ import org.webrtc.MediaConstraints;
 import org.webrtc.MediaStream;
 import org.webrtc.MediaStreamTrack;
 import org.webrtc.PeerConnectionFactory;
-import org.webrtc.ScreenCapturerAndroid;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoSource;
@@ -280,7 +279,13 @@ class GetUserMediaImpl {
                 }
             }
         }
-        // should we fallback to available camera automatically?
+
+        // falling back to the first available camera
+        if (videoCapturer == null && deviceNames.length > 0){
+            videoCapturer = enumerator.createCapturer(deviceNames[0], new CameraEventsHandler());
+            Log.d(TAG, "Falling back to the first available camera");
+        }
+
         return videoCapturer;
     }
 
@@ -466,7 +471,7 @@ class GetUserMediaImpl {
                         MediaStreamTrack[] tracks = new MediaStreamTrack[1];
                         VideoCapturer videoCapturer = null;
                         videoCapturer =
-                                new ScreenCapturerAndroid(
+                                new OrientationAwareScreenCapturer(
                                         mediaProjectionData,
                                         new MediaProjection.Callback() {
                                             @Override
@@ -502,7 +507,7 @@ class GetUserMediaImpl {
                         info.capturer = videoCapturer;
 
                         videoCapturer.startCapture(info.width, info.height, info.fps);
-                        Log.d(TAG, "ScreenCapturerAndroid.startCapture: " + info.width + "x" + info.height + "@" + info.fps);
+                        Log.d(TAG, "OrientationAwareScreenCapturer.startCapture: " + info.width + "x" + info.height + "@" + info.fps);
 
                         String trackId = stateProvider.getNextTrackUUID();
                         mVideoCapturers.put(trackId, info);
@@ -756,10 +761,11 @@ class GetUserMediaImpl {
                 };
 
         final Activity activity = stateProvider.getActivity();
-        if (activity != null) {
-            PermissionUtils.requestPermissions(
-                    activity, permissions.toArray(new String[permissions.size()]), callback);
-        }
+        final Context context = stateProvider.getApplicationContext();
+        PermissionUtils.requestPermissions(
+                context,
+                activity,
+                permissions.toArray(new String[permissions.size()]), callback);
     }
 
     void switchCamera(String id, Result result) {
