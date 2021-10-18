@@ -3,12 +3,12 @@ import 'dart:html';
 import 'dart:js_util' as jsutil;
 
 import 'package:flutter/services.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 import '../interface/media_stream_track.dart';
 import '../interface/rtc_dtmf_sender.dart';
 import '../interface/rtc_rtp_parameters.dart';
 import '../interface/rtc_rtp_sender.dart';
+import '../interface/rtc_stats_report.dart';
 import 'media_stream_track_impl.dart';
 import 'rtc_dtmf_sender_impl.dart';
 import 'rtc_rtp_parameters_impl.dart';
@@ -59,8 +59,9 @@ class RTCRtpSenderWeb extends RTCRtpSender {
           'encodings',
           jsutil.jsify(
               parameters.encodings?.map((e) => e.toMap()).toList() ?? []));
-      return await jsutil.promiseToFuture<bool>(
+      await jsutil.promiseToFuture<void>(
           jsutil.callMethod(_jsRtpSender, 'setParameters', [oldParameters]));
+      return Future<bool>.value(true);
     } on PlatformException catch (e) {
       throw 'Unable to RTCRtpSender::setParameters: ${e.message}';
     }

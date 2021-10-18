@@ -26,14 +26,14 @@ class RTCDataChannelNative extends RTCDataChannel {
   final String _label;
   final int _dataChannelId;
   RTCDataChannelState? _state;
-  final _channel = WebRTC.methodChannel();
   StreamSubscription<dynamic>? _eventSubscription;
 
   @override
   RTCDataChannelState? get state => _state;
 
   /// Get label.
-  String get label => _label;
+  @override
+  String? get label => _label;
 
   final _stateChangeController =
       StreamController<RTCDataChannelState>.broadcast(sync: true);
@@ -83,7 +83,7 @@ class RTCDataChannelNative extends RTCDataChannel {
 
   @override
   Future<void> send(RTCDataChannelMessage message) async {
-    await _channel.invokeMethod('dataChannelSend', <String, dynamic>{
+    await WebRTC.invokeMethod('dataChannelSend', <String, dynamic>{
       'peerConnectionId': _peerConnectionId,
       'dataChannelId': _dataChannelId,
       'type': message.isBinary ? 'binary' : 'text',
@@ -96,7 +96,7 @@ class RTCDataChannelNative extends RTCDataChannel {
     await _stateChangeController.close();
     await _messageController.close();
     await _eventSubscription?.cancel();
-    await _channel.invokeMethod('dataChannelClose', <String, dynamic>{
+    await WebRTC.invokeMethod('dataChannelClose', <String, dynamic>{
       'peerConnectionId': _peerConnectionId,
       'dataChannelId': _dataChannelId
     });

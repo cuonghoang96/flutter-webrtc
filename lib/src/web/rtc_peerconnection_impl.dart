@@ -3,9 +3,6 @@ import 'dart:html' as html;
 import 'dart:js' as js;
 import 'dart:js_util' as jsutil;
 
-import 'package:flutter_webrtc/src/interface/rtc_track_event.dart';
-import 'package:flutter_webrtc/src/web/rtc_rtp_transceiver_impl.dart';
-
 import '../interface/enums.dart';
 import '../interface/media_stream.dart';
 import '../interface/media_stream_track.dart';
@@ -18,12 +15,14 @@ import '../interface/rtc_rtp_sender.dart';
 import '../interface/rtc_rtp_transceiver.dart';
 import '../interface/rtc_session_description.dart';
 import '../interface/rtc_stats_report.dart';
+import '../interface/rtc_track_event.dart';
 import 'media_stream_impl.dart';
 import 'media_stream_track_impl.dart';
 import 'rtc_data_channel_impl.dart';
 import 'rtc_dtmf_sender_impl.dart';
 import 'rtc_rtp_receiver_impl.dart';
 import 'rtc_rtp_sender_impl.dart';
+import 'rtc_rtp_transceiver_impl.dart';
 
 /*
  *  PeerConnection
@@ -178,15 +177,21 @@ class RTCPeerConnectionWeb extends RTCPeerConnection {
   @override
   Future<RTCSessionDescription> createOffer(
       [Map<String, dynamic>? constraints]) async {
-    final offer = await _jsPc.createOffer(constraints);
-    return _sessionFromJs(offer);
+    final args = constraints != null ? [jsutil.jsify(constraints)] : [];
+    final desc = await jsutil.promiseToFuture<dynamic>(
+        jsutil.callMethod(_jsPc, 'createOffer', args));
+    return RTCSessionDescription(
+        jsutil.getProperty(desc, 'sdp'), jsutil.getProperty(desc, 'type'));
   }
 
   @override
   Future<RTCSessionDescription> createAnswer(
       [Map<String, dynamic>? constraints]) async {
-    final answer = await _jsPc.createAnswer(constraints);
-    return _sessionFromJs(answer);
+    final args = constraints != null ? [jsutil.jsify(constraints)] : [];
+    final desc = await jsutil.promiseToFuture<dynamic>(
+        jsutil.callMethod(_jsPc, 'createAnswer', args));
+    return RTCSessionDescription(
+        jsutil.getProperty(desc, 'sdp'), jsutil.getProperty(desc, 'type'));
   }
 
   @override
@@ -330,7 +335,8 @@ class RTCPeerConnectionWeb extends RTCPeerConnection {
   Future<bool> removeTrack(RTCRtpSender sender) async {
     var nativeSender = sender as RTCRtpSenderWeb;
     // var nativeTrack = nativeSender.track as MediaStreamTrackWeb;
-    return jsutil.callMethod(_jsPc, 'removeTrack', [nativeSender.jsRtpSender]);
+    jsutil.callMethod(_jsPc, 'removeTrack', [nativeSender.jsRtpSender]);
+    return Future<bool>.value(true);
   }
 
   @override
@@ -368,18 +374,32 @@ class RTCPeerConnectionWeb extends RTCPeerConnection {
   }
 
   //'audio|video', { 'direction': 'recvonly|sendonly|sendrecv' }
+  //
+  // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/addTransceiver
+  //
   @override
-  Future<RTCRtpTransceiver> addTransceiver(
-      {MediaStreamTrack? track,
-      RTCRtpMediaType? kind,
-      RTCRtpTransceiverInit? init}) async {
-    var kindLabel = kind != null ? typeRTCRtpMediaTypetoString[kind] : null;
-    var kindOrTrack = kindLabel ?? (track as MediaStreamTrackWeb).jsTrack;
-    final jsOptions = jsutil
-        .jsify(init != null ? RTCRtpTransceiverInitWeb.initToMap(init) : {});
-    var transceiver =
-        jsutil.callMethod(_jsPc, 'addTransceiver', [kindOrTrack, jsOptions]);
-    return RTCRtpTransceiverWeb.fromJsObject(transceiver,
-        peerConnectionId: _peerConnectionId);
+  Future<RTCRtpTransceiver> addTransceiver({
+    MediaStreamTrack? track,
+    RTCRtpMediaType? kind,
+    RTCRtpTransceiverInit? init,
+  }) async {
+    final jsTrack = track is MediaStreamTrackWeb ? track.jsTrack : null;
+    final kindString = kind != null ? typeRTCRtpMediaTypetoString[kind] : null;
+    final trackOrKind = jsTrack ?? kindString;
+    assert(trackOrKind != null, 'track or kind must not be null');
+
+    final transceiver = jsutil.callMethod(
+      _jsPc,
+      'addTransceiver',
+      [
+        trackOrKind,
+        if (init != null) init.toJsObject(),
+      ],
+    );
+
+    return RTCRtpTransceiverWeb.fromJsObject(
+      transceiver,
+      peerConnectionId: _peerConnectionId,
+    );
   }
 }

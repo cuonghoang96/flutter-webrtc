@@ -32,6 +32,9 @@ class RTCDataChannelWeb extends RTCDataChannel {
   @override
   RTCDataChannelState get state => _state;
 
+  @override
+  String? get label => _jsDc.label;
+
   final _stateChangeController =
       StreamController<RTCDataChannelState>.broadcast(sync: true);
   final _messageController =
@@ -55,9 +58,7 @@ class RTCDataChannelWeb extends RTCDataChannel {
     if (!message.isBinary) {
       _jsDc.send(message.text);
     } else {
-      // This may just work
-      _jsDc.sendByteBuffer(message.binary.buffer);
-      // If not, convert to ArrayBuffer/Blob
+      _jsDc.sendTypedData(message.binary);
     }
     return Future.value();
   }

@@ -41,6 +41,7 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
   private PeerConnection.RTCConfiguration configuration;
   final Map<String, MediaStream> remoteStreams = new HashMap<>();
   final Map<String, MediaStreamTrack> remoteTracks = new HashMap<>();
+  final Map<String, RtpTransceiver> transceivers = new HashMap<>();
   private final StateProvider stateProvider;
   private final EventChannel eventChannel;
   private EventChannel.EventSink eventSink;
@@ -151,13 +152,16 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
     }
 
     RtpTransceiver getRtpTransceiverById(String id) {
-        List<RtpTransceiver> transceivers = peerConnection.getTransceivers();
-        for(RtpTransceiver transceiver : transceivers) {
-            if (id.equals(transceiver.getMid())){
-                return transceiver;
-            }
-        }
-        return null;
+       RtpTransceiver transceiver = transceivers.get(id);
+       if(null == transceiver) {
+           List<RtpTransceiver> transceivers = peerConnection.getTransceivers();
+           for(RtpTransceiver t : transceivers) {
+               if (id.equals(t.getMid())){
+                   transceiver = t;
+               }
+           }
+       }
+       return transceiver;
     }
 
     RtpSender getRtpSenderById(String id) {
@@ -261,7 +265,12 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
     sendEvent(params);
   }
 
-  @Override
+    @Override
+    public void onStandardizedIceConnectionChange(PeerConnection.IceConnectionState newState) {
+
+    }
+
+    @Override
   public void onIceConnectionReceivingChange(boolean var1) {
   }
 
@@ -432,14 +441,38 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
           List<RtpTransceiver> transceivers = peerConnection.getTransceivers();
           for( RtpTransceiver transceiver : transceivers ) {
               if(transceiver.getReceiver() != null && receiver.id().equals(transceiver.getReceiver().id())) {
-                  params.putMap("transceiver", transceiverToMap(transceiver));
+                  String transceiverId = transceiver.getMid();
+                  if(null == transceiverId) {
+                      transceiverId = stateProvider.getNextStreamUUID();
+                  }
+                  params.putMap("transceiver", transceiverToMap(transceiverId, transceiver));
               }
           }
       }
       sendEvent(params);
   }
 
-  @Override
+    @Override
+    public void onRemoveTrack(RtpReceiver rtpReceiver) {
+        Log.d(TAG, "onRemoveTrack");
+
+        MediaStreamTrack track = rtpReceiver.track();
+        String trackId = track.id();
+        ConstraintsMap trackInfo = new ConstraintsMap();
+        trackInfo.putString("id", trackId);
+        trackInfo.putString("label", track.kind());
+        trackInfo.putString("kind", track.kind());
+        trackInfo.putBoolean("enabled", track.enabled());
+        trackInfo.putString("readyState", track.state().toString());
+        trackInfo.putBoolean("remote", true);
+        ConstraintsMap params = new ConstraintsMap();
+        params.putString("event", "onRemoveTrack");
+        params.putString("trackId", track.id());
+        params.putMap("track", trackInfo.toMap());
+        sendEvent(params);
+    }
+
+    @Override
   public void onDataChannel(DataChannel dataChannel) {
     // XXX Unfortunately, the Java WebRTC API doesn't expose the id
     // of the underlying C++/native DataChannel (even though the
@@ -846,10 +879,14 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
       return info.toMap();
   }
 
-  Map<String, Object> transceiverToMap(RtpTransceiver transceiver){
+  Map<String, Object> transceiverToMap(String transceiverId, RtpTransceiver transceiver){
       ConstraintsMap info = new ConstraintsMap();
-      info.putString("transceiverId", transceiver.getMid());
-      info.putString("mid", transceiver.getMid());
+      info.putString("transceiverId", transceiverId);
+      if(transceiver.getMid() == null) {
+          info.putString("mid", "");
+      } else {
+          info.putString("mid", transceiver.getMid());
+      }
       info.putString("direction", transceiverDirectionString(transceiver.getDirection()));
       info.putMap("sender", rtpSenderToMap(transceiver.getSender()));
       info.putMap("receiver", rtpReceiverToMap(transceiver.getReceiver()));
@@ -888,7 +925,12 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
       } else {
           transceiver = peerConnection.addTransceiver(track);
       }
-      result.success(transceiverToMap(transceiver));
+      String transceiverId = transceiver.getMid();
+      if(null == transceiverId) {
+          transceiverId = stateProvider.getNextStreamUUID();
+      }
+      transceivers.put(transceiverId, transceiver);
+      result.success(transceiverToMap(transceiverId, transceiver));
   }
 
   public void addTransceiverOfType(String mediaType, Map<String, Object> transceiverInit,  Result result) {
@@ -898,7 +940,12 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
       } else {
           transceiver = peerConnection.addTransceiver(stringToMediaType(mediaType));
       }
-      result.success(transceiverToMap(transceiver));
+      String transceiverId = transceiver.getMid();
+      if(null == transceiverId) {
+          transceiverId = stateProvider.getNextStreamUUID();
+      }
+      transceivers.put(transceiverId, transceiver);
+      result.success(transceiverToMap(transceiverId, transceiver));
   }
 
   public void rtpTransceiverSetDirection(String direction, String transceiverId, Result result) {
@@ -911,15 +958,31 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
       result.success(null);
   }
 
+  public void rtpTransceiverGetDirection(String transceiverId, Result result) {
+      RtpTransceiver transceiver = getRtpTransceiverById(transceiverId);
+      if (transceiver == null) {
+          resultError("rtpTransceiverGetDirection", "transceiver is null", result);
+          return;
+      }
+      ConstraintsMap params = new ConstraintsMap();
+      params.putString("result", transceiverDirectionString(transceiver.getDirection()));
+      result.success(params.toMap());
+  }
+
   public void rtpTransceiverGetCurrentDirection(String transceiverId, Result result) {
       RtpTransceiver transceiver = getRtpTransceiverById(transceiverId);
       if (transceiver == null) {
           resultError("rtpTransceiverGetCurrentDirection", "transceiver is null", result);
           return;
       }
-      ConstraintsMap params = new ConstraintsMap();
-      params.putString("result", transceiverDirectionString(transceiver.getDirection()));
-      result.success(params.toMap());
+      RtpTransceiver.RtpTransceiverDirection direction = transceiver.getCurrentDirection();
+      if(direction == null) {
+          result.success(null);
+      } else {
+          ConstraintsMap params = new ConstraintsMap();
+          params.putString("result", transceiverDirectionString(direction));
+          result.success(params.toMap());
+      }
   }
 
     public void rtpTransceiverStop(String transceiverId, Result result) {
@@ -990,8 +1053,12 @@ class PeerConnectionObserver implements PeerConnection.Observer, EventChannel.St
     public void getTransceivers(Result result) {
       List<RtpTransceiver> transceivers = peerConnection.getTransceivers();
       ConstraintsArray transceiversParams = new ConstraintsArray();
-      for(RtpTransceiver receiver : transceivers){
-        transceiversParams.pushMap(new ConstraintsMap(transceiverToMap(receiver)));
+      for(RtpTransceiver transceiver : transceivers){
+          String transceiverId = transceiver.getMid();
+          if(null == transceiverId) {
+              transceiverId = stateProvider.getNextStreamUUID();
+          }
+        transceiversParams.pushMap(new ConstraintsMap(transceiverToMap(transceiverId, transceiver)));
       }
       ConstraintsMap params = new ConstraintsMap();
       params.putArray("transceivers", transceiversParams.toArrayList());
